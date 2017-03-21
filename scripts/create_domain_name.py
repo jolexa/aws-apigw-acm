@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# NOTE: https://forums.aws.amazon.com/message.jspa?messageID=769627
+
 import argparse
 import boto3
 
