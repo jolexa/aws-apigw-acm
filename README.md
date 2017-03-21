@@ -7,7 +7,7 @@ This is a quick implementation that was motivated because I wanted to figure it 
 This repo represents three cloudformation stacks and two boto3 helpers.
 
 One stack sets up the API GW and Lambda Hello World function (in `us-west-1`).  
-One stack sets up the ACM cert, only available in `us-east-1` at this time.
+One stack sets up the ACM cert, only available in `us-east-1` at this time.  
 One stack sets up the Route53 CNAME and changes the API GW Base Path Mapping
 
 ## How?
