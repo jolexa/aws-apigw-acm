@@ -1,0 +1,17 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  ACMUrl:
+    Type: String
+    Description: URL To general ACM Cert
+
+Outputs:
+  ACMCertArn:
+    Description: "ACM Cert Arn"
+    Value: !Ref PrimaryACMCert
+
+Resources:
+  PrimaryACMCert:
+    Type: "AWS::CertificateManager::Certificate"
+    Properties:
+      DomainName: !Ref ACMUrl
