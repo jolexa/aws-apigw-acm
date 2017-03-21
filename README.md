@@ -13,6 +13,9 @@ One stack sets up the Route53 CNAME and changes the API GW Base Path Mapping
 ## How?
 If you want to test this yourself, change a few variables in `Makefile` and run `make deploy`
 
+The reason that there are some boto3 helpers is because cloudformation does not support creating an API GW Domain Name.  
+Reference: https://forums.aws.amazon.com/message.jspa?messageID=769627
+
 ## Result
 
 API GW responds on two domains, including my custom domain
