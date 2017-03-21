@@ -5,6 +5,8 @@ Description: Simple API Endpoint configured using Swagger specified inline and b
 Outputs:
   ExampleApi:
     Value: !Ref ExampleApi
+    Export:
+      Name: RestApiId
   DomainName:
     Value: !Ref DomainName
 
