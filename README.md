@@ -6,9 +6,9 @@ This is a quick implementation that was motivated because I wanted to figure it 
 ## What?
 This repo represents three cloudformation stacks and two boto3 helpers.
 
-One stack sets up the API GW and Lambda Hello World function (in `us-west-1`).  
+One stack sets up the two API Gateways that proxy to two Lambda Hello World functions (in `us-west-1`).  
 One stack sets up the ACM cert, only available in `us-east-1` at this time.  
-One stack sets up the Route53 CNAME and changes the API GW Base Path Mapping
+One stack sets up the Route53 Alias and changes the API GW Base Path Mappings
 
 ## How?
 If you want to test this yourself, change a few variables in `Makefile` and run `make deploy`
@@ -18,32 +18,27 @@ Reference: https://forums.aws.amazon.com/message.jspa?messageID=769627
 
 ## Result
 
-API GW responds on two domains, including my custom domain
+API GW responds its own domain and the custom domain
 ```
-curl https://j8zi1n66fc.execute-api.us-west-1.amazonaws.com/prod/
-hello world
-$ curl https://aws-api-gw-acm.jolexa.us/
-hello world
+$ curl https://6owdl3cmxj.execute-api.us-west-1.amazonaws.com/prod
+hello world, from node
+$ curl https://6q24sn35p0.execute-api.us-west-1.amazonaws.com/prod
+hello world, from python
+$ curl https://aws-apigw-acm.jolexa.us/node
+hello world, from node
+$ curl https://aws-apigw-acm.jolexa.us/python
+hello world, from python
 ```
 ```
-$ host aws-api-gw-acm.jolexa.us
-aws-api-gw-acm.jolexa.us is an alias for d1eko9ysqon0po.cloudfront.net.
-d1eko9ysqon0po.cloudfront.net has address 52.85.202.123
-d1eko9ysqon0po.cloudfront.net has address 52.85.202.112
-d1eko9ysqon0po.cloudfront.net has address 52.85.202.113
-d1eko9ysqon0po.cloudfront.net has address 52.85.202.142
-d1eko9ysqon0po.cloudfront.net has address 52.85.202.127
-d1eko9ysqon0po.cloudfront.net has address 52.85.202.19
-d1eko9ysqon0po.cloudfront.net has address 52.85.202.37
-d1eko9ysqon0po.cloudfront.net has address 52.85.202.36
-d1eko9ysqon0po.cloudfront.net has IPv6 address 2600:9000:2009:ba00:9:3fd8:d700:93a1
-d1eko9ysqon0po.cloudfront.net has IPv6 address 2600:9000:2009:6000:9:3fd8:d700:93a1
-d1eko9ysqon0po.cloudfront.net has IPv6 address 2600:9000:2009:2200:9:3fd8:d700:93a1
-d1eko9ysqon0po.cloudfront.net has IPv6 address 2600:9000:2009:c00:9:3fd8:d700:93a1
-d1eko9ysqon0po.cloudfront.net has IPv6 address 2600:9000:2009:fa00:9:3fd8:d700:93a1
-d1eko9ysqon0po.cloudfront.net has IPv6 address 2600:9000:2009:8200:9:3fd8:d700:93a1
-d1eko9ysqon0po.cloudfront.net has IPv6 address 2600:9000:2009:a200:9:3fd8:d700:93a1
-d1eko9ysqon0po.cloudfront.net has IPv6 address 2600:9000:2009:7400:9:3fd8:d700:93a1
+% host aws-apigw-acm.jolexa.us
+aws-apigw-acm.jolexa.us has address 52.85.202.191
+aws-apigw-acm.jolexa.us has address 52.85.202.241
+aws-apigw-acm.jolexa.us has address 52.85.202.98
+aws-apigw-acm.jolexa.us has address 52.85.202.178
+aws-apigw-acm.jolexa.us has address 52.85.202.94
+aws-apigw-acm.jolexa.us has address 52.85.202.186
+aws-apigw-acm.jolexa.us has address 52.85.202.160
+aws-apigw-acm.jolexa.us has address 52.85.202.13
 ```
 
 ## Questions?
