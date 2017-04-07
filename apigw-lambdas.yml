@@ -1,0 +1,89 @@
+# https://github.com/awslabs/serverless-application-model/tree/master/examples/2016-10-31/inline_swagger
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Simple API Endpoint configured using Swagger specified inline and backed by a Lambda function
+
+Outputs:
+  NodeApi:
+    Value: !Ref NodeApi
+    Export:
+      Name: NodeApiId
+  PythonApi:
+    Value: !Ref PythonApi
+    Export:
+      Name: PythonApiId
+  DomainName:
+    Value: !Ref DomainName
+
+Parameters:
+  DomainName:
+    Type: String
+
+Resources:
+  NodeApi:
+    Type: AWS::Serverless::Api
+    Properties:
+        StageName: prod
+        DefinitionBody:
+            swagger: 2.0
+            info:
+                title: !Sub "${AWS::StackName}-node"
+            paths:
+              "/":
+                get:
+                  x-amazon-apigateway-integration:
+                    httpMethod: POST
+                    type: aws_proxy
+                    uri:
+                      Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${NodeFunction.Arn}/invocations
+                  responses: {}
+            swagger: '2.0'
+
+  NodeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs4.3
+      Timeout: 1
+      CodeUri: s3://aws-apigw-acm-reference/zipfile_v3.zip # This is public readable
+      Events:
+        GetApi:
+          Type: Api
+          Properties:
+            Path: /
+            Method: GET
+            RestApiId: !Ref NodeApi
+
+  PythonApi:
+    Type: AWS::Serverless::Api
+    Properties:
+        StageName: prod
+        DefinitionBody:
+            swagger: 2.0
+            info:
+              title: !Sub "${AWS::StackName}-python"
+            paths:
+              "/":
+                get:
+                  x-amazon-apigateway-integration:
+                    httpMethod: POST
+                    type: aws_proxy
+                    uri:
+                      Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PythonFunction.Arn}/invocations
+                  responses: {}
+            swagger: '2.0'
+
+  PythonFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index-python.handler
+      Runtime: python2.7
+      Timeout: 1
+      CodeUri: s3://aws-apigw-acm-reference/zipfile_v3.zip # This is public readable
+      Events:
+        GetApi:
+          Type: Api
+          Properties:
+            Path: /
+            Method: GET
+            RestApiId: !Ref PythonApi

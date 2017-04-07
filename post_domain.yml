@@ -11,21 +11,28 @@ Parameters:
     Type: String
 
 Resources:
-  ExampleDNS:
+  AliasDNSEntry:
     Type: AWS::Route53::RecordSet
     Properties:
+      AliasTarget:
+        DNSName: !Ref CloudFrontDistro
+        HostedZoneId: Z2FDTNDATAQYW2 # CloudFront zone id hardcoded by design
       HostedZoneName: !Ref ZoneName
-      Comment: DNS name for my distro
       Name: !Ref DomainName
-      Type: CNAME
-      TTL: '60'
-      ResourceRecords:
-      - !Ref CloudFrontDistro
+      Type: A
 
-  ExampleBasePathMapping:
+  NodeBasePathMapping:
     Type: "AWS::ApiGateway::BasePathMapping"
     Properties:
+      BasePath: node
       DomainName: !Ref DomainName
-      RestApiId: !ImportValue RestApiId # cross stack ref with poor naming scheme
+      RestApiId: !ImportValue NodeApiId
+      Stage: prod
+  PythonBasePathMapping:
+    Type: "AWS::ApiGateway::BasePathMapping"
+    Properties:
+      BasePath: python
+      DomainName: !Ref DomainName
+      RestApiId: !ImportValue PythonApiId
       Stage: prod
 
