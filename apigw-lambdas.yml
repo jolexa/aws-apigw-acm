@@ -18,6 +18,8 @@ Outputs:
 Parameters:
   DomainName:
     Type: String
+  Bucket:
+    Type: String
 
 Resources:
   NodeApi:
@@ -45,7 +47,9 @@ Resources:
       Handler: index.handler
       Runtime: nodejs4.3
       Timeout: 1
-      CodeUri: s3://aws-apigw-acm-reference/zipfile_v3.zip # This is public readable
+      CodeUri:
+        Bucket: !Ref Bucket
+        Key: zipfile_v3.zip # This is public readable
       Events:
         GetApi:
           Type: Api
@@ -79,7 +83,9 @@ Resources:
       Handler: index-python.handler
       Runtime: python2.7
       Timeout: 1
-      CodeUri: s3://aws-apigw-acm-reference/zipfile_v3.zip # This is public readable
+      CodeUri:
+        Bucket: !Ref Bucket
+        Key: zipfile_v3.zip # This is public readable
       Events:
         GetApi:
           Type: Api
