@@ -1,22 +1,12 @@
 # https://github.com/awslabs/serverless-application-model/tree/master/examples/2016-10-31/inline_swagger
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Simple API Endpoint configured using Swagger specified inline and backed by a Lambda function
-
-Outputs:
-  NodeApi:
-    Value: !Ref NodeApi
-    Export:
-      Name: NodeApiId
-  PythonApi:
-    Value: !Ref PythonApi
-    Export:
-      Name: PythonApiId
-  DomainName:
-    Value: !Ref DomainName
+Description: Two API Gateway Endpoints behind one custom domain
 
 Parameters:
   DomainName:
+    Type: String
+  ZoneName:
     Type: String
   Bucket:
     Type: String
@@ -93,3 +83,141 @@ Resources:
             Path: /
             Method: GET
             RestApiId: !Ref PythonApi
+
+  CustomDomainRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Sid: 'Lambda'
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+            - sts:AssumeRole
+      Path: "/cfn/"
+      Policies:
+      - PolicyName: DomainNames
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - apigateway:POST
+            Resource:
+            - !Sub "arn:aws:apigateway:${AWS::Region}::/domainnames"
+          - Effect: Allow
+            Action:
+            - apigateway:DELETE
+            Resource:
+            - !Sub "arn:aws:apigateway:${AWS::Region}::/domainnames/*"
+          - Effect: Allow
+            Action:
+            - cloudfront:UpdateDistribution
+            - acm:ListCertificates
+            Resource: '*'
+
+  CustomDomain:
+    Type: Custom::DomainName
+    Properties:
+        ServiceToken: !GetAtt CustomDomainFunction.Arn
+        DomainName: !Ref DomainName
+
+  CustomDomainFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Custom Cloudformation Resource for Custom API GW Domains
+      Runtime: python2.7
+      Handler: index.handler
+      Role: !GetAtt CustomDomainRole.Arn
+      Timeout: 30
+      Code:
+        ZipFile: |
+          # NOTE: https://forums.aws.amazon.com/message.jspa?messageID=769627
+
+          import logging
+          import json
+          import boto3
+          import cfnresponse
+
+          logging.basicConfig()
+          logging.getLogger('boto3').setLevel(logging.CRITICAL)
+          logging.getLogger('botocore').setLevel(logging.CRITICAL)
+          logger = logging.getLogger("mylogger")
+          logger.setLevel(logging.INFO)
+
+          def handler(event, context):
+              client = boto3.client('apigateway')
+              logger.info(json.dumps(event, indent=2))
+
+              ResponseURL=event['ResponseURL']
+              StackId=event['StackId']
+              RequestId=event['RequestId']
+              ResourceType=event['ResourceType']
+              RequestType=event['RequestType']
+              LogicalResourceId=event['LogicalResourceId']
+              PhysicalResourceId=event.get('PhysicalResourceId')
+              responseData = {}
+
+              if RequestType == "Create":
+                  DomainName=event['ResourceProperties']['DomainName']
+                  certs = boto3.client('acm', region_name='us-east-1').list_certificates()
+                  for i in certs['CertificateSummaryList']:
+                      if i['DomainName'] == DomainName:
+                          ACMCertArn = i['CertificateArn']
+                  response = client.create_domain_name(
+                      domainName=DomainName,
+                      certificateArn=ACMCertArn
+                  )
+                  responseData['distributionDomainName'] = response['distributionDomainName']
+              #elif RequestType == "Update":
+              #    pass
+              elif RequestType == "Delete":
+                  DomainName=event['ResourceProperties']['DomainName']
+                  response = client.delete_domain_name(
+                      domainName=DomainName
+                      )
+              # magic cfnresponse, heh
+              cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData,
+                  "CustomResourcePhysicalID")
+
+  AliasDNSEntry:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      AliasTarget:
+        DNSName: !GetAtt CustomDomain.distributionDomainName
+        HostedZoneId: Z2FDTNDATAQYW2 # CloudFront zone id hardcoded by design
+      HostedZoneName: !Ref ZoneName
+      Name: !Ref DomainName
+      Type: A
+  AliasDNSEntry6:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      AliasTarget:
+        DNSName: !GetAtt CustomDomain.distributionDomainName
+        HostedZoneId: Z2FDTNDATAQYW2 # CloudFront zone id hardcoded by design
+      HostedZoneName: !Ref ZoneName
+      Name: !Ref DomainName
+      Type: AAAA
+
+  NodeBasePathMapping:
+    Type: "AWS::ApiGateway::BasePathMapping"
+    DependsOn:
+      - NodeApiprodStage
+    Properties:
+      BasePath: node
+      DomainName: !Ref DomainName
+      RestApiId: !Ref NodeApi
+      Stage: prod
+  PythonBasePathMapping:
+    Type: "AWS::ApiGateway::BasePathMapping"
+    DependsOn:
+      - PythonApiprodStage
+    Properties:
+      BasePath: python
+      DomainName: !Ref DomainName
+      RestApiId: !Ref PythonApi
+      Stage: prod
