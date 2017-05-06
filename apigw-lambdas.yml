@@ -44,7 +44,7 @@ Resources:
   NodeFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: index.handler
+      Handler: hello-js.handler
       Runtime: nodejs4.3
       Timeout: 1
       CodeUri:
@@ -80,7 +80,7 @@ Resources:
   PythonFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: index-python.handler
+      Handler: hello.handler
       Runtime: python2.7
       Timeout: 1
       CodeUri:
