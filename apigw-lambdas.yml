@@ -207,6 +207,7 @@ Resources:
     Type: "AWS::ApiGateway::BasePathMapping"
     DependsOn:
       - NodeApiprodStage
+      - CustomDomain
     Properties:
       BasePath: node
       DomainName: !Ref DomainName
@@ -216,6 +217,7 @@ Resources:
     Type: "AWS::ApiGateway::BasePathMapping"
     DependsOn:
       - PythonApiprodStage
+      - CustomDomain
     Properties:
       BasePath: python
       DomainName: !Ref DomainName
