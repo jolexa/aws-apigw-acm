@@ -161,9 +161,9 @@ Resources:
               LogicalResourceId=event['LogicalResourceId']
               PhysicalResourceId=event.get('PhysicalResourceId')
               responseData = {}
+              DomainName=event['ResourceProperties']['DomainName']
 
               if RequestType == "Create":
-                  DomainName=event['ResourceProperties']['DomainName']
                   certs = boto3.client('acm', region_name='us-east-1').list_certificates()
                   for i in certs['CertificateSummaryList']:
                       if i['DomainName'] == DomainName:
@@ -173,16 +173,27 @@ Resources:
                       certificateArn=ACMCertArn
                   )
                   responseData['distributionDomainName'] = response['distributionDomainName']
-              #elif RequestType == "Update":
-              #    pass
+              elif RequestType == "Update":
+                  OldDomainName=event['OldResourceProperties']['DomainName']
+                  certs = boto3.client('acm', region_name='us-east-1').list_certificates()
+                  for i in certs['CertificateSummaryList']:
+                      if i['DomainName'] == DomainName:
+                          ACMCertArn = i['CertificateArn']
+                  response = client.create_domain_name(
+                      domainName=DomainName,
+                      certificateArn=ACMCertArn
+                  )
+                  responseData['distributionDomainName'] = response['distributionDomainName']
+                  delete = client.delete_domain_name(
+                      domainName=OldDomainName
+                      )
               elif RequestType == "Delete":
-                  DomainName=event['ResourceProperties']['DomainName']
                   response = client.delete_domain_name(
                       domainName=DomainName
                       )
               # magic cfnresponse, heh
-              cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData,
-                  "CustomResourcePhysicalID")
+              cfnresponse.send(event, context, cfnresponse.SUCCESS,
+                  responseData, "CustomResourcePhysicalID")
 
   AliasDNSEntry:
     Type: AWS::Route53::RecordSet
