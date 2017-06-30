@@ -9,7 +9,8 @@ all: deploy-apigw
 prep:
 	cd lambda && \
 		zip -r9 zipfile.zip * && \
-		aws s3 cp --acl public-read ./zipfile.zip s3://$(BUCKET)/zipfile_v3.zip && \
+		aws s3 cp --acl public-read ./zipfile.zip \
+			s3://$(BUCKET)/$(shell md5sum lambda/* | md5sum | cut -d ' ' -f 1) && \
 		rm -f zipfile.zip
 
 deploy-apigw: deploy-acm prep
@@ -20,6 +21,7 @@ deploy-apigw: deploy-acm prep
 		--parameter-overrides "DomainName=$(URL)" \
 		"ZoneName=$(ZONE)" \
 		"Bucket=$(BUCKET)" \
+		"md5=$(shell md5sum lambda/* | md5sum | cut -d ' ' -f 1)" \
 		--capabilities CAPABILITY_IAM || exit 0
 
 deploy-acm:
