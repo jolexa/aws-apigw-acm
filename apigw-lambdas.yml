@@ -144,6 +144,7 @@ Resources:
           import json
           import boto3
           import cfnresponse
+          from botocore.exceptions import ClientError
 
           logging.basicConfig()
           logging.getLogger('boto3').setLevel(logging.CRITICAL)
@@ -186,13 +187,18 @@ Resources:
                       certificateArn=ACMCertArn
                   )
                   responseData['distributionDomainName'] = response['distributionDomainName']
+                  # Not sure if this delete should be here or not
                   delete = client.delete_domain_name(
                       domainName=OldDomainName
                       )
               elif RequestType == "Delete":
-                  response = client.delete_domain_name(
-                      domainName=DomainName
-                      )
+                  try:
+                    response = client.delete_domain_name(
+                        domainName=DomainName
+                        )
+                  except ClientError as e:
+                      if e.response['Error']['Code'] == 'NotFoundException':
+                          print("Domain Not Found, sending success reponse anyway")
               # magic cfnresponse, heh
               # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-lambda-function-code.html#cfn-lambda-function-code-cfnresponsemodule
               cfnresponse.send(event, context, cfnresponse.SUCCESS,
