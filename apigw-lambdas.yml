@@ -202,7 +202,7 @@ Resources:
               # magic cfnresponse, heh
               # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-lambda-function-code.html#cfn-lambda-function-code-cfnresponsemodule
               cfnresponse.send(event, context, cfnresponse.SUCCESS,
-                  responseData)
+                  responseData, "CustomDomainPhysicalID")
 
   AliasDNSEntry:
     Type: AWS::Route53::RecordSet
