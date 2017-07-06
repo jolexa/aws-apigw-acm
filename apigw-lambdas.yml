@@ -166,6 +166,7 @@ Resources:
               responseData = {}
               DomainName=event['ResourceProperties']['DomainName']
 
+              responsecode = 'SUCCESS' # default to working
               if RequestType == "Create":
                   certs = boto3.client('acm', region_name='us-east-1').list_certificates()
                   for i in certs['CertificateSummaryList']:
@@ -182,15 +183,21 @@ Resources:
                   for i in certs['CertificateSummaryList']:
                       if i['DomainName'] == DomainName:
                           ACMCertArn = i['CertificateArn']
-                  response = client.create_domain_name(
-                      domainName=DomainName,
-                      certificateArn=ACMCertArn
-                  )
-                  responseData['distributionDomainName'] = response['distributionDomainName']
-                  # Not sure if this delete should be here or not
-                  delete = client.delete_domain_name(
-                      domainName=OldDomainName
-                      )
+                  try:
+                    response = client.create_domain_name(
+                        domainName=DomainName,
+                        certificateArn=ACMCertArn
+                    )
+                    responseData['distributionDomainName'] = response['distributionDomainName']
+                    # Not sure if this delete should be here or not
+                    delete = client.delete_domain_name(
+                        domainName=OldDomainName
+                        )
+                  except ClientError as e:
+                      if e.response['Error']['Code'] == 'BadRequestException':
+                          print("Domain Duplicated, limitation of AWS/CloudFront...wait longer")
+                          responsecode = 'FAILED'
+
               elif RequestType == "Delete":
                   try:
                     response = client.delete_domain_name(
@@ -201,7 +208,7 @@ Resources:
                           print("Domain Not Found, sending success reponse anyway")
               # magic cfnresponse, heh
               # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-lambda-function-code.html#cfn-lambda-function-code-cfnresponsemodule
-              cfnresponse.send(event, context, cfnresponse.SUCCESS,
+              cfnresponse.send(event, context, responsecode,
                   responseData, "CustomDomainPhysicalID")
 
   AliasDNSEntry:
