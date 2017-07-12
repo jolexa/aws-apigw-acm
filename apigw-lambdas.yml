@@ -135,7 +135,7 @@ Resources:
       Runtime: python2.7
       Handler: index.handler
       Role: !GetAtt CustomDomainRole.Arn
-      Timeout: 30
+      Timeout: 120
       Code:
         ZipFile: |
           # NOTE: https://forums.aws.amazon.com/message.jspa?messageID=769627
