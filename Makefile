@@ -9,7 +9,7 @@ all: deploy-apigw
 prep:
 	cd lambda && \
 		zip -r9 /tmp/zipfile.zip * && \
-		aws s3 cp --acl public-read /tmp/zipfile.zip \
+		aws s3 cp --region $(REGION) --acl public-read /tmp/zipfile.zip \
 			s3://$(BUCKET)/$(shell md5sum lambda/* | md5sum | cut -d ' ' -f 1) && \
 		rm -f /tmp/zipfile.zip
 
