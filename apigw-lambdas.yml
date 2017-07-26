@@ -86,7 +86,7 @@ Resources:
             Method: GET
             RestApiId: !Ref PythonApi
 
-  CustomDomainRole:
+  CustomListACMCertRole:
     Type: AWS::IAM::Role
     Properties:
       ManagedPolicyArns:
@@ -103,48 +103,34 @@ Resources:
             - sts:AssumeRole
       Path: "/cfn/"
       Policies:
-      - PolicyName: DomainNames
+      - PolicyName: ACMCerts
         PolicyDocument:
           Statement:
           - Effect: Allow
             Action:
-            - apigateway:POST
-            Resource:
-            - !Sub "arn:aws:apigateway:${AWS::Region}::/domainnames"
-          - Effect: Allow
-            Action:
-            - apigateway:DELETE
-            Resource:
-            - !Sub "arn:aws:apigateway:${AWS::Region}::/domainnames/*"
-          - Effect: Allow
-            Action:
-            - cloudfront:UpdateDistribution
             - acm:ListCertificates
             Resource: '*'
 
-  CustomDomain:
-    Type: Custom::DomainName
+  CustomACMLookup:
+    Type: Custom::ListACMCert
     Properties:
-        ServiceToken: !GetAtt CustomDomainFunction.Arn
-        DomainName: !Ref DomainName
+        ServiceToken: !GetAtt CustomListACMCertFunction.Arn
+        CertDomainName: !Ref DomainName
 
-  CustomDomainFunction:
+  CustomListACMCertFunction:
     Type: AWS::Lambda::Function
     Properties:
-      Description: Custom Cloudformation Resource for Custom API GW Domains
+      Description: Custom Cloudformation Resource to return the ARN of ACM
       Runtime: python2.7
       Handler: index.handler
-      Role: !GetAtt CustomDomainRole.Arn
+      Role: !GetAtt CustomListACMCertRole.Arn
       Timeout: 120
       Code:
         ZipFile: |
-          # NOTE: https://forums.aws.amazon.com/message.jspa?messageID=769627
-
           import logging
           import json
           import boto3
           import cfnresponse
-          from botocore.exceptions import ClientError
 
           logging.basicConfig()
           logging.getLogger('boto3').setLevel(logging.CRITICAL)
@@ -164,58 +150,21 @@ Resources:
               LogicalResourceId=event['LogicalResourceId']
               PhysicalResourceId=event.get('PhysicalResourceId')
               responseData = {}
-              DomainName=event['ResourceProperties']['DomainName']
+              CertDomainName=event['ResourceProperties']['CertDomainName']
 
-              responsecode = 'SUCCESS' # default to working
-              if RequestType == "Create":
-                  certs = boto3.client('acm', region_name='us-east-1').list_certificates()
-                  for i in certs['CertificateSummaryList']:
-                      if i['DomainName'] == DomainName:
-                          ACMCertArn = i['CertificateArn']
-                  response = client.create_domain_name(
-                      domainName=DomainName,
-                      certificateArn=ACMCertArn
-                  )
-                  responseData['distributionDomainName'] = response['distributionDomainName']
-              elif RequestType == "Update":
-                  OldDomainName=event['OldResourceProperties']['DomainName']
-                  certs = boto3.client('acm', region_name='us-east-1').list_certificates()
-                  for i in certs['CertificateSummaryList']:
-                      if i['DomainName'] == DomainName:
-                          ACMCertArn = i['CertificateArn']
-                  try:
-                    response = client.create_domain_name(
-                        domainName=DomainName,
-                        certificateArn=ACMCertArn
-                    )
-                    responseData['distributionDomainName'] = response['distributionDomainName']
-                    # Not sure if this delete should be here or not
-                    delete = client.delete_domain_name(
-                        domainName=OldDomainName
-                        )
-                  except ClientError as e:
-                      if e.response['Error']['Code'] == 'BadRequestException':
-                          print("Domain Duplicated, limitation of AWS/CloudFront...wait longer")
-                          responsecode = 'FAILED'
-
-              elif RequestType == "Delete":
-                  try:
-                    response = client.delete_domain_name(
-                        domainName=DomainName
-                        )
-                  except ClientError as e:
-                      if e.response['Error']['Code'] == 'NotFoundException':
-                          print("Domain Not Found, sending success reponse anyway")
-              # magic cfnresponse, heh
+              certs = boto3.client('acm', region_name='us-east-1').list_certificates()
+              for i in certs['CertificateSummaryList']:
+                  if i['DomainName'] == CertDomainName:
+                      responseData['CertificateArn'] = i['CertificateArn']
               # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-lambda-function-code.html#cfn-lambda-function-code-cfnresponsemodule
-              cfnresponse.send(event, context, responsecode,
-                  responseData, "CustomDomainPhysicalID")
+              cfnresponse.send(event, context, 'SUCCESS',
+                  responseData, "CustomACMCertArnId")
 
   AliasDNSEntry:
     Type: AWS::Route53::RecordSet
     Properties:
       AliasTarget:
-        DNSName: !GetAtt CustomDomain.distributionDomainName
+        DNSName: !GetAtt CustomDomain.DistributionDomainName
         HostedZoneId: Z2FDTNDATAQYW2 # CloudFront zone id hardcoded by design
       HostedZoneName: !Ref ZoneName
       Name: !Ref DomainName
@@ -224,11 +173,17 @@ Resources:
     Type: AWS::Route53::RecordSet
     Properties:
       AliasTarget:
-        DNSName: !GetAtt CustomDomain.distributionDomainName
+        DNSName: !GetAtt CustomDomain.DistributionDomainName
         HostedZoneId: Z2FDTNDATAQYW2 # CloudFront zone id hardcoded by design
       HostedZoneName: !Ref ZoneName
       Name: !Ref DomainName
       Type: AAAA
+
+  CustomDomain:
+    Type: 'AWS::ApiGateway::DomainName'
+    Properties:
+      DomainName: !Ref DomainName
+      CertificateArn: !GetAtt CustomACMLookup.CertificateArn
 
   NodeBasePathMapping:
     Type: "AWS::ApiGateway::BasePathMapping"
